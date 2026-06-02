@@ -1,4 +1,4 @@
-package autotests.update;
+package autotests;
 
 import com.consol.citrus.TestCaseRunner;
 import com.consol.citrus.annotations.CitrusResource;
@@ -16,7 +16,7 @@ import static com.consol.citrus.validation.json.JsonPathMessageValidationContext
 
 public class DuckUpdateTest extends TestNGCitrusSpringSupport {
 
-    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState, String variableName) {
+    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState) {
         String heightFormatted = String.format(Locale.US, "%f", height);
         String body = String.format(
                 "{\"color\":\"%s\",\"height\":%s,\"material\":\"%s\",\"sound\":\"%s\",\"wingsState\":\"%s\"}",
@@ -30,7 +30,9 @@ public class DuckUpdateTest extends TestNGCitrusSpringSupport {
                 .message()
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .body(body));
+    }
 
+    private void extractDuckId(TestCaseRunner runner, String variableName) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .receive()
@@ -40,21 +42,26 @@ public class DuckUpdateTest extends TestNGCitrusSpringSupport {
                 .extract(fromBody().expression("$.id", variableName)));
     }
 
-    @Test(description = "update: изменить цвет и высоту уточки. ожидается успешное обновление")
-    @CitrusTest
-    public void testUpdateColorAndHeight(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE", "duckId");
-
+    private void sendUpdateRequest(TestCaseRunner runner, String duckId, String color, String height, String material, String sound, String wingsState) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .send()
                 .put("/api/duck/update")
-                .queryParam("id", "${duckId}")
-                .queryParam("color", "red")
-                .queryParam("height", "25.0")
-                .queryParam("material", "rubber")
-                .queryParam("sound", "quack")
-                .queryParam("wingsState", "ACTIVE"));
+                .queryParam("id", duckId)
+                .queryParam("color", color)
+                .queryParam("height", height)
+                .queryParam("material", material)
+                .queryParam("sound", sound)
+                .queryParam("wingsState", wingsState));
+    }
+
+    @Test(description = "update: изменить цвет и высоту уточки. ожидается успешное обновление")
+    @CitrusTest
+    public void testUpdateColorAndHeight(@Optional @CitrusResource TestCaseRunner runner) {
+        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE");
+        extractDuckId(runner, "duckId");
+
+        sendUpdateRequest(runner, "${duckId}", "red", "25.0", "rubber", "quack", "ACTIVE");
 
         runner.$(http()
                 .client("http://localhost:2222")
@@ -70,18 +77,10 @@ public class DuckUpdateTest extends TestNGCitrusSpringSupport {
     @Test(description = "update: изменить цвет и звук уточки. ожидается успешное обновление")
     @CitrusTest
     public void testUpdateColorAndSound(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE", "duckId");
+        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE");
+        extractDuckId(runner, "duckId");
 
-        runner.$(http()
-                .client("http://localhost:2222")
-                .send()
-                .put("/api/duck/update")
-                .queryParam("id", "${duckId}")
-                .queryParam("color", "blue")
-                .queryParam("height", "10.0")
-                .queryParam("material", "rubber")
-                .queryParam("sound", "meow")
-                .queryParam("wingsState", "ACTIVE"));
+        sendUpdateRequest(runner, "${duckId}", "blue", "10.0", "rubber", "meow", "ACTIVE");
 
         runner.$(http()
                 .client("http://localhost:2222")

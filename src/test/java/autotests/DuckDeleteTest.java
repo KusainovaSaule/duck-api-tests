@@ -1,4 +1,4 @@
-package autotests.actions.properties;
+package autotests;
 
 import com.consol.citrus.TestCaseRunner;
 import com.consol.citrus.annotations.CitrusResource;
@@ -14,9 +14,9 @@ import static com.consol.citrus.dsl.MessageSupport.MessageBodySupport.fromBody;
 import static com.consol.citrus.http.actions.HttpActionBuilder.http;
 import static com.consol.citrus.validation.json.JsonPathMessageValidationContext.Builder.jsonPath;
 
-public class DuckPropertiesTest extends TestNGCitrusSpringSupport {
+public class DuckDeleteTest extends TestNGCitrusSpringSupport {
 
-    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState, String variableName) {
+    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState) {
         String heightFormatted = String.format(Locale.US, "%f", height);
         String body = String.format(
                 "{\"color\":\"%s\",\"height\":%s,\"material\":\"%s\",\"sound\":\"%s\",\"wingsState\":\"%s\"}",
@@ -30,7 +30,9 @@ public class DuckPropertiesTest extends TestNGCitrusSpringSupport {
                 .message()
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .body(body));
+    }
 
+    private void extractDuckId(TestCaseRunner runner, String variableName) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .receive()
@@ -40,38 +42,21 @@ public class DuckPropertiesTest extends TestNGCitrusSpringSupport {
                 .extract(fromBody().expression("$.id", variableName)));
     }
 
-    @Test(description = "properties: нечетный ID (1), material=rubber. ожидается полный набор с характеристиками")
-    @CitrusTest
-    public void testPropertiesOddIdRubber(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "yellow", 10.0, "rubber", "quack", "FIXED", "duckId");
-
+    private void sendDeleteRequest(TestCaseRunner runner, String duckId) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .send()
-                .get("/api/duck/action/properties")
-                .queryParam("id", "${duckId}"));
-
-        runner.$(http()
-                .client("http://localhost:2222")
-                .receive()
-                .response(HttpStatus.OK)
-                .message()
-                .type(MessageType.JSON)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .validate(jsonPath()
-                        .expression("$.material", "rubber")));
+                .delete("/api/duck/delete")
+                .queryParam("id", duckId));
     }
 
-    @Test(description = "properties: четный ID (2), material=wood. ожидается полный набор с характеристиками")
+    @Test(description = "delete: удалить утку. ожидается успешное удаление")
     @CitrusTest
-    public void testPropertiesEvenIdWood(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "green", 15.0, "wood", "quack", "ACTIVE", "duckId");
+    public void testDeleteDuck(@Optional @CitrusResource TestCaseRunner runner) {
+        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE");
+        extractDuckId(runner, "duckId");
 
-        runner.$(http()
-                .client("http://localhost:2222")
-                .send()
-                .get("/api/duck/action/properties")
-                .queryParam("id", "${duckId}"));
+        sendDeleteRequest(runner, "${duckId}");
 
         runner.$(http()
                 .client("http://localhost:2222")
@@ -81,6 +66,6 @@ public class DuckPropertiesTest extends TestNGCitrusSpringSupport {
                 .type(MessageType.JSON)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
-                        .expression("$.material", "wood")));
+                        .expression("$.message", "Duck is deleted")));
     }
 }

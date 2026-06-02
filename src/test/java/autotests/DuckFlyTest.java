@@ -1,4 +1,4 @@
-package autotests.actions.fly;
+package autotests;
 
 import com.consol.citrus.TestCaseRunner;
 import com.consol.citrus.annotations.CitrusResource;
@@ -16,11 +16,10 @@ import static com.consol.citrus.validation.json.JsonPathMessageValidationContext
 
 public class DuckFlyTest extends TestNGCitrusSpringSupport {
 
-    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState, String variableName) {
-        String heightFormatted = String.format(Locale.US, "%f", height);
+    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState) {
         String body = String.format(
                 "{\"color\":\"%s\",\"height\":%s,\"material\":\"%s\",\"sound\":\"%s\",\"wingsState\":\"%s\"}",
-                color, heightFormatted, material, sound, wingsState
+                color, height, material, sound, wingsState
         );
 
         runner.$(http()
@@ -30,7 +29,9 @@ public class DuckFlyTest extends TestNGCitrusSpringSupport {
                 .message()
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .body(body));
+    }
 
+    private void extractDuckId(TestCaseRunner runner, String variableName) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .receive()
@@ -40,16 +41,21 @@ public class DuckFlyTest extends TestNGCitrusSpringSupport {
                 .extract(fromBody().expression("$.id", variableName)));
     }
 
-    @Test(description = "fly: существующий id с активными крыльями (wingsState=ACTIVE). ожидается I'm flying, если смотреть документацию")
-    @CitrusTest
-    public void testFlyActiveWings(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE", "duckId");
-
+    private void sendFlyRequest(TestCaseRunner runner, String duckId) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .send()
                 .get("/api/duck/action/fly")
-                .queryParam("id", "${duckId}"));
+                .queryParam("id", duckId));
+    }
+
+    @Test(description = "fly: существующий id с активными крыльями (wingsState=ACTIVE). ожидается I'm flying, если смотреть документацию")
+    @CitrusTest
+    public void testFlyActiveWings(@Optional @CitrusResource TestCaseRunner runner) {
+        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE");
+        extractDuckId(runner, "duckId");
+
+        sendFlyRequest(runner, "${duckId}");
 
         runner.$(http()
                 .client("http://localhost:2222")
@@ -62,16 +68,13 @@ public class DuckFlyTest extends TestNGCitrusSpringSupport {
                         .expression("$.message", "I'm flying")));
     }
 
-    @Test(description = "fly: существующий id со связанными крыльями (wingsState=FIXED). ожидается I can’t fly, если смотреть документацию")
+    @Test(description = "fly: существующий id со связанными крыльями (wingsState=FIXED). ожидается I can't fly, если смотреть документацию")
     @CitrusTest
     public void testFlyFixedWings(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "red", 12.0, "wood", "quack", "FIXED", "duckId");
+        createDuck(runner, "red", 12.0, "wood", "quack", "FIXED");
+        extractDuckId(runner, "duckId");
 
-        runner.$(http()
-                .client("http://localhost:2222")
-                .send()
-                .get("/api/duck/action/fly")
-                .queryParam("id", "${duckId}"));
+        sendFlyRequest(runner, "${duckId}");
 
         runner.$(http()
                 .client("http://localhost:2222")
@@ -81,19 +84,16 @@ public class DuckFlyTest extends TestNGCitrusSpringSupport {
                 .type(MessageType.JSON)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
-                        .expression("$.message", "I can’t fly")));
+                        .expression("$.message", "I can't fly")));
     }
 
     @Test(description = "fly: существующий id с крыльями в неопределенном состоянии (wingsState=UNDEFINED). ожидается по сваггеру Wings are not detected :(")
     @CitrusTest
     public void testFlyUndefinedWings(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "blue", 8.0, "plastic", "quack", "UNDEFINED", "duckId");
+        createDuck(runner, "blue", 8.0, "plastic", "quack", "UNDEFINED");
+        extractDuckId(runner, "duckId");
 
-        runner.$(http()
-                .client("http://localhost:2222")
-                .send()
-                .get("/api/duck/action/fly")
-                .queryParam("id", "${duckId}"));
+        sendFlyRequest(runner, "${duckId}");
 
         runner.$(http()
                 .client("http://localhost:2222")

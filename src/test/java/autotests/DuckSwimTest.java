@@ -1,4 +1,4 @@
-package autotests.actions.quack;
+package autotests;
 
 import com.consol.citrus.TestCaseRunner;
 import com.consol.citrus.annotations.CitrusResource;
@@ -10,13 +10,14 @@ import org.springframework.http.MediaType;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Test;
 import java.util.Locale;
+import static com.consol.citrus.DefaultTestActionBuilder.action;
 import static com.consol.citrus.dsl.MessageSupport.MessageBodySupport.fromBody;
 import static com.consol.citrus.http.actions.HttpActionBuilder.http;
 import static com.consol.citrus.validation.json.JsonPathMessageValidationContext.Builder.jsonPath;
 
-public class DuckQuackTest extends TestNGCitrusSpringSupport {
+public class DuckSwimTest extends TestNGCitrusSpringSupport {
 
-    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState, String variableName) {
+    private void createDuck(TestCaseRunner runner, String color, double height, String material, String sound, String wingsState) {
         String heightFormatted = String.format(Locale.US, "%f", height);
         String body = String.format(
                 "{\"color\":\"%s\",\"height\":%s,\"material\":\"%s\",\"sound\":\"%s\",\"wingsState\":\"%s\"}",
@@ -30,7 +31,9 @@ public class DuckQuackTest extends TestNGCitrusSpringSupport {
                 .message()
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .body(body));
+    }
 
+    private void extractDuckId(TestCaseRunner runner, String variableName) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .receive()
@@ -40,51 +43,54 @@ public class DuckQuackTest extends TestNGCitrusSpringSupport {
                 .extract(fromBody().expression("$.id", variableName)));
     }
 
-    @Test(description = "quack: корректный нечетный id, корректный звук. repeatCount=2, soundCount=2. ожидается quack-quack, quack-quack")
-    @CitrusTest
-    public void testQuackOddId(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE", "duckId");
-
+    private void sendSwimRequest(TestCaseRunner runner, String duckId) {
         runner.$(http()
                 .client("http://localhost:2222")
                 .send()
-                .get("/api/duck/action/quack")
-                .queryParam("id", "${duckId}")
-                .queryParam("repetitionCount", "2")
-                .queryParam("soundCount", "2"));
-
-        runner.$(http()
-                .client("http://localhost:2222")
-                .receive()
-                .response(HttpStatus.OK)
-                .message()
-                .type(MessageType.JSON)
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .validate(jsonPath()
-                        .expression("$.sound", "quack-quack, quack-quack")));
+                .get("/api/duck/action/swim")
+                .queryParam("id", duckId));
     }
 
-    @Test(description = "quack: корректный четный id, корректный звук. repeatCount=3, soundCount=1. ожидается quack, quack, quack")
-    @CitrusTest
-    public void testQuackEvenId(@Optional @CitrusResource TestCaseRunner runner) {
-        createDuck(runner, "green", 15.0, "wood", "quack", "ACTIVE", "duckId");
+    private void deleteDuckFromDb(TestCaseRunner runner, long id) {
+        runner.$(action(context -> {
+            try (java.sql.Connection conn = java.sql.DriverManager.getConnection("jdbc:h2:mem:testdb", "sa", "dev");
+                 java.sql.Statement stmt = conn.createStatement()) {
+                stmt.execute(String.format("DELETE FROM DUCK WHERE ID = %d", id));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }));
+    }
 
-        runner.$(http()
-                .client("http://localhost:2222")
-                .send()
-                .get("/api/duck/action/quack")
-                .queryParam("id", "${duckId}")
-                .queryParam("repetitionCount", "3")
-                .queryParam("soundCount", "1"));
+    @Test(description = "swim: существующий id. ожидается, что утка найдена и фраза, что она умеет плавать")
+    @CitrusTest
+    public void testSwimExistingId(@Optional @CitrusResource TestCaseRunner runner) {
+        createDuck(runner, "yellow", 10.0, "rubber", "quack", "ACTIVE");
+        extractDuckId(runner, "duckId");
+
+        sendSwimRequest(runner, "${duckId}");
 
         runner.$(http()
                 .client("http://localhost:2222")
                 .receive()
-                .response(HttpStatus.OK)
+                .response(HttpStatus.NOT_FOUND)
                 .message()
                 .type(MessageType.JSON)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
-                        .expression("$.sound", "quack, quack, quack")));
+                        .expression("$.message", "Paws are not found ((((")));
+    }
+
+    @Test(description = "swim: несуществующий id. ожидается, что такой утки нет")
+    @CitrusTest
+    public void testSwimNonExistentId(@Optional @CitrusResource TestCaseRunner runner) {
+        deleteDuckFromDb(runner, 999999L);
+
+        sendSwimRequest(runner, "999999");
+
+        runner.$(http()
+                .client("http://localhost:2222")
+                .receive()
+                .response(HttpStatus.NOT_FOUND));
     }
 }
