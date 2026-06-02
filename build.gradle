@@ -23,5 +23,5 @@ dependencies {
 }
 
 test {
-    useJUnitPlatform()
+    useTestNG()
 }
