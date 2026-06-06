@@ -10,16 +10,16 @@ public class DuckUpdateClient extends DuckClient {
 
     public void updateDuck(TestCaseRunner runner, String duckId, String color, String height,
                            String material, String sound, String wingsState) {
-        runner.$(http()
-                .client(duckService)
-                .send()
-                .put("/api/duck/update?id=" + duckId + "&color=" + color + "&height=" + height +
-                        "&material=" + material + "&sound=" + sound + "&wingsState=" + wingsState)
-                .message()
-                .contentType(MediaType.APPLICATION_JSON_VALUE));
+        sendPutRequest(runner, "/api/duck/update",
+                "id", duckId,
+                "color", color,
+                "height", height,
+                "material", material,
+                "sound", sound,
+                "wingsState", wingsState);
     }
 
-    public void validateUpdateResponse(TestCaseRunner runner, String duckId) {
+    public void validateUpdateWithString(TestCaseRunner runner, String expectedMessage) {
         runner.$(http()
                 .client(duckService)
                 .receive()
@@ -27,6 +27,26 @@ public class DuckUpdateClient extends DuckClient {
                 .message()
                 .type(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
-                        .expression("$.message", "Duck with id = " + duckId + " is updated")));
+                        .expression("$.message", expectedMessage)));
+    }
+
+    public void validateUpdateWithResource(TestCaseRunner runner, String resourcePath) {
+        validateResponseResource(runner, resourcePath);
+    }
+
+    public void validateUpdateWithPayload(TestCaseRunner runner, Object expectedPayload) {
+        try {
+            String message = (String) expectedPayload.getClass().getMethod("message").invoke(expectedPayload);
+            runner.$(http()
+                    .client(duckService)
+                    .receive()
+                    .response(HttpStatus.OK)
+                    .message()
+                    .type(MediaType.APPLICATION_JSON_VALUE)
+                    .validate(jsonPath()
+                            .expression("$.message", message)));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract payload values", e);
+        }
     }
 }
