@@ -9,23 +9,7 @@ import static com.consol.citrus.validation.json.JsonPathMessageValidationContext
 public class DuckSwimClient extends DuckClient {
 
     public void swimDuck(TestCaseRunner runner, String duckId) {
-        runner.$(http()
-                .client(duckService)
-                .send()
-                .get("/api/duck/action/swim?id=" + duckId)
-                .message()
-                .contentType(MediaType.APPLICATION_JSON_VALUE));
-    }
-
-    public void validateSwimResponseNotFound(TestCaseRunner runner) {
-        runner.$(http()
-                .client(duckService)
-                .receive()
-                .response(HttpStatus.NOT_FOUND)
-                .message()
-                .type(MediaType.APPLICATION_JSON_VALUE)
-                .validate(jsonPath()
-                        .expression("$.message", "Paws are not found ((((")));
+        sendGetRequest(runner, "/api/duck/action/swim", "id", duckId);
     }
 
     public void validateNotFound(TestCaseRunner runner) {
@@ -33,5 +17,42 @@ public class DuckSwimClient extends DuckClient {
                 .client(duckService)
                 .receive()
                 .response(HttpStatus.NOT_FOUND));
+    }
+
+    public void validateSwimWithString(TestCaseRunner runner, String expectedMessage) {
+        runner.$(http()
+                .client(duckService)
+                .receive()
+                .response(HttpStatus.NOT_FOUND)
+                .message()
+                .type(MediaType.APPLICATION_JSON_VALUE)
+                .validate(jsonPath()
+                        .expression("$.message", expectedMessage)));
+    }
+
+    public void validateSwimWithResource(TestCaseRunner runner, String resourcePath) {
+        runner.$(http()
+                .client(duckService)
+                .receive()
+                .response(HttpStatus.NOT_FOUND)
+                .message()
+                .type(MediaType.APPLICATION_JSON_VALUE)
+                .body(new org.springframework.core.io.ClassPathResource(resourcePath)));
+    }
+
+    public void validateSwimWithPayload(TestCaseRunner runner, Object expectedPayload) {
+        try {
+            String message = (String) expectedPayload.getClass().getMethod("message").invoke(expectedPayload);
+            runner.$(http()
+                    .client(duckService)
+                    .receive()
+                    .response(HttpStatus.NOT_FOUND)
+                    .message()
+                    .type(MediaType.APPLICATION_JSON_VALUE)
+                    .validate(jsonPath()
+                            .expression("$.message", message)));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract payload values", e);
+        }
     }
 }

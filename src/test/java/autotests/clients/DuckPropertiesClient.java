@@ -9,12 +9,7 @@ import static com.consol.citrus.validation.json.JsonPathMessageValidationContext
 public class DuckPropertiesClient extends DuckClient {
 
     public void getDuckProperties(TestCaseRunner runner, String duckId) {
-        runner.$(http()
-                .client(duckService)
-                .send()
-                .get("/api/duck/action/properties?id=" + duckId)
-                .message()
-                .contentType(MediaType.APPLICATION_JSON_VALUE));
+        sendGetRequest(runner, "/api/duck/action/properties", "id", duckId);
     }
 
     public void validatePropertiesResponse(TestCaseRunner runner) {
@@ -24,7 +19,12 @@ public class DuckPropertiesClient extends DuckClient {
                 .response(HttpStatus.OK));
     }
 
-    public void validatePropertiesMaterial(TestCaseRunner runner, String expectedMaterial) {
+    public void validatePropertiesWithString(TestCaseRunner runner, String color, double height,
+                                             String material, String sound, String wingsState) {
+        validateResponseString(runner, color, height, material, sound, wingsState);
+    }
+
+    public void validatePropertiesMaterialWithString(TestCaseRunner runner, String expectedMaterial) {
         runner.$(http()
                 .client(duckService)
                 .receive()
@@ -33,5 +33,13 @@ public class DuckPropertiesClient extends DuckClient {
                 .type(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
                         .expression("$.material", expectedMaterial)));
+    }
+
+    public void validatePropertiesWithResource(TestCaseRunner runner, String resourcePath) {
+        validateResponseResource(runner, resourcePath);
+    }
+
+    public void validatePropertiesWithPayload(TestCaseRunner runner, Object expectedPayload) {
+        validateResponsePayload(runner, expectedPayload);
     }
 }

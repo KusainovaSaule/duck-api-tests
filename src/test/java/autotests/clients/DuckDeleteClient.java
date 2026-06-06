@@ -9,14 +9,10 @@ import static com.consol.citrus.validation.json.JsonPathMessageValidationContext
 public class DuckDeleteClient extends DuckClient {
 
     public void deleteDuck(TestCaseRunner runner, String duckId) {
-        runner.$(http()
-                .client(duckService)
-                .send()
-                .delete("/api/duck/delete")
-                .queryParam("id", duckId));
+        sendDeleteRequest(runner, "/api/duck/delete", "id", duckId);
     }
 
-    public void validateDeleteResponse(TestCaseRunner runner) {
+    public void validateDeleteWithString(TestCaseRunner runner, String expectedMessage) {
         runner.$(http()
                 .client(duckService)
                 .receive()
@@ -24,6 +20,26 @@ public class DuckDeleteClient extends DuckClient {
                 .message()
                 .type(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
-                        .expression("$.message", "Duck is deleted")));
+                        .expression("$.message", expectedMessage)));
+    }
+
+    public void validateDeleteWithResource(TestCaseRunner runner, String resourcePath) {
+        validateResponseResource(runner, resourcePath);
+    }
+
+    public void validateDeleteWithPayload(TestCaseRunner runner, Object expectedPayload) {
+        try {
+            String message = (String) expectedPayload.getClass().getMethod("message").invoke(expectedPayload);
+            runner.$(http()
+                    .client(duckService)
+                    .receive()
+                    .response(HttpStatus.OK)
+                    .message()
+                    .type(MediaType.APPLICATION_JSON_VALUE)
+                    .validate(jsonPath()
+                            .expression("$.message", message)));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract payload values", e);
+        }
     }
 }

@@ -17,7 +17,7 @@ public class DuckQuackClient extends DuckClient {
                 .contentType(MediaType.APPLICATION_JSON_VALUE));
     }
 
-    public void validateQuackResponse(TestCaseRunner runner, String expectedSound) {
+    public void validateQuackWithString(TestCaseRunner runner, String expectedSound) {
         runner.$(http()
                 .client(duckService)
                 .receive()
@@ -26,5 +26,25 @@ public class DuckQuackClient extends DuckClient {
                 .type(MediaType.APPLICATION_JSON_VALUE)
                 .validate(jsonPath()
                         .expression("$.sound", expectedSound)));
+    }
+
+    public void validateQuackWithResource(TestCaseRunner runner, String resourcePath) {
+        validateResponseResource(runner, resourcePath);
+    }
+
+    public void validateQuackWithPayload(TestCaseRunner runner, Object expectedPayload) {
+        try {
+            String sound = (String) expectedPayload.getClass().getMethod("sound").invoke(expectedPayload);
+            runner.$(http()
+                    .client(duckService)
+                    .receive()
+                    .response(HttpStatus.OK)
+                    .message()
+                    .type(MediaType.APPLICATION_JSON_VALUE)
+                    .validate(jsonPath()
+                            .expression("$.sound", sound)));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract payload values", e);
+        }
     }
 }

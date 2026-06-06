@@ -1,60 +1,61 @@
 package autotests.tests;
 
 import autotests.clients.DuckQuackClient;
+import autotests.clients.DuckCreateClient;
+import autotests.payloads.response.DuckCreateRequest;
+import autotests.payloads.response.DuckQuackResponse;
 import com.consol.citrus.TestCaseRunner;
 import com.consol.citrus.annotations.CitrusResource;
 import com.consol.citrus.annotations.CitrusTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Test;
-import static com.consol.citrus.DefaultTestActionBuilder.action;
 
 public class DuckQuackTest extends DuckQuackClient {
 
-    private void createDuckInDb(TestCaseRunner runner, long id, String color, double height,
-                                String material, String sound, String wingsState) {
-        runner.$(action(context -> {
-            try (java.sql.Connection conn = java.sql.DriverManager.getConnection("jdbc:h2:mem:testdb", "sa", "dev");
-                 java.sql.Statement stmt = conn.createStatement()) {
-                stmt.execute(String.format(
-                        "INSERT INTO DUCK (ID, COLOR, HEIGHT, MATERIAL, SOUND, WINGS_STATE) VALUES (%d, '%s', %f, '%s', '%s', '%s')",
-                        id, color, height, material, sound, wingsState
-                ));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }));
-    }
+    private DuckCreateClient createClient = new DuckCreateClient();
 
-    private void clearDuckTable(TestCaseRunner runner) {
-        runner.$(action(context -> {
-            try (java.sql.Connection conn = java.sql.DriverManager.getConnection("jdbc:h2:mem:testdb", "sa", "dev");
-                 java.sql.Statement stmt = conn.createStatement()) {
-                stmt.execute("DELETE FROM DUCK");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }));
-    }
-
-    @Test(description = "quack: корректный нечетный id (1), repeatCount=2, soundCount=2")
+    @Test(description = "quack: нечетный id (валидация через Payload)")
     @CitrusTest
-    public void testQuackOddId(@Optional @CitrusResource TestCaseRunner runner) {
-        long id = 1L;
-        clearDuckTable(runner);
-        createDuckInDb(runner, id, "yellow", 10, "rubber", "quack", "ACTIVE");
+    public void testQuackOddIdWithPayload(@Optional @CitrusResource TestCaseRunner runner) {
+        createClient.duckService = this.duckService;
 
-        quackDuck(runner, String.valueOf(id), 2, 2);
-        validateQuackResponse(runner, "quack-quack, quack-quack");
+        DuckCreateRequest request = new DuckCreateRequest()
+                .color("yellow")
+                .height(10.0)
+                .material("rubber")
+                .sound("quack")
+                .wingsState("ACTIVE");
+
+        createClient.createDuckAndExtractId(runner, request.color(), request.height(),
+                request.material(), request.sound(),
+                request.wingsState(), "duckId");
+
+        quackDuck(runner, "${duckId}", 2, 2);
+
+        DuckQuackResponse expectedResponse = new DuckQuackResponse()
+                .sound("quack-quack, quack-quack");
+
+        validateQuackWithPayload(runner, expectedResponse);
     }
 
-    @Test(description = "quack: корректный четный id (2), repeatCount=3, soundCount=1")
+    @Test(description = "quack: четный id (валидация через String)")
     @CitrusTest
-    public void testQuackEvenId(@Optional @CitrusResource TestCaseRunner runner) {
-        long id = 2L;
-        clearDuckTable(runner);
-        createDuckInDb(runner, id, "green", 15, "wood", "quack", "ACTIVE");
+    public void testQuackEvenIdWithString(@Optional @CitrusResource TestCaseRunner runner) {
+        createClient.duckService = this.duckService;
 
-        quackDuck(runner, String.valueOf(id), 3, 1);
-        validateQuackResponse(runner, "moo-moo-moo");
+        DuckCreateRequest request = new DuckCreateRequest()
+                .color("green")
+                .height(15.0)
+                .material("wood")
+                .sound("quack")
+                .wingsState("ACTIVE");
+
+        createClient.createDuckAndExtractId(runner, request.color(), request.height(),
+                request.material(), request.sound(),
+                request.wingsState(), "duckId");
+
+        quackDuck(runner, "${duckId}", 3, 1);
+
+        validateQuackWithString(runner, "moo-moo-moo");
     }
 }

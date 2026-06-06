@@ -2,6 +2,8 @@ package autotests.tests;
 
 import autotests.clients.DuckUpdateClient;
 import autotests.clients.DuckCreateClient;
+import autotests.payloads.response.DuckCreateRequest;
+import autotests.payloads.response.DuckMessageResponse;
 import com.consol.citrus.TestCaseRunner;
 import com.consol.citrus.annotations.CitrusResource;
 import com.consol.citrus.annotations.CitrusTest;
@@ -12,23 +14,49 @@ public class DuckUpdateTest extends DuckUpdateClient {
 
     private DuckCreateClient createClient = new DuckCreateClient();
 
-    @Test(description = "update: изменить цвет и высоту уточки")
+    @Test(description = "update: изменить цвет и высоту (валидация через Payload)")
     @CitrusTest
-    public void testUpdateColorAndHeight(@Optional @CitrusResource TestCaseRunner runner) {
+    public void testUpdateColorAndHeightWithPayload(@Optional @CitrusResource TestCaseRunner runner) {
         createClient.duckService = this.duckService;
-        createClient.createDuckAndExtractId(runner, "yellow", 10, "rubber", "quack", "ACTIVE", "duckId");
+
+        DuckCreateRequest request = new DuckCreateRequest()
+                .color("yellow")
+                .height(10.0)
+                .material("rubber")
+                .sound("quack")
+                .wingsState("ACTIVE");
+
+        createClient.createDuckAndExtractId(runner, request.color(), request.height(),
+                request.material(), request.sound(),
+                request.wingsState(), "duckId");
 
         updateDuck(runner, "${duckId}", "red", "25", "rubber", "quack", "ACTIVE");
-        validateUpdateResponse(runner, "${duckId}");
+
+        DuckMessageResponse expectedResponse = new DuckMessageResponse()
+                .message("Duck with id = ${duckId} is updated");
+
+        validateUpdateWithPayload(runner, expectedResponse);
     }
 
-    @Test(description = "update: изменить цвет и звук уточки")
+    @Test(description = "update: изменить цвет и звук (валидация через String)")
     @CitrusTest
-    public void testUpdateColorAndSound(@Optional @CitrusResource TestCaseRunner runner) {
+    public void testUpdateColorAndSoundWithString(@Optional @CitrusResource TestCaseRunner runner) {
         createClient.duckService = this.duckService;
-        createClient.createDuckAndExtractId(runner, "yellow", 10, "rubber", "quack", "ACTIVE", "duckId");
+
+        DuckCreateRequest request = new DuckCreateRequest()
+                .color("yellow")
+                .height(10.0)
+                .material("rubber")
+                .sound("quack")
+                .wingsState("ACTIVE");
+
+        createClient.createDuckAndExtractId(runner, request.color(), request.height(),
+                request.material(), request.sound(),
+                request.wingsState(), "duckId");
 
         updateDuck(runner, "${duckId}", "blue", "10", "rubber", "meow", "ACTIVE");
-        validateUpdateResponse(runner, "${duckId}");
+
+        String expectedMessage = "Duck with id = ${duckId} is updated";
+        validateUpdateWithString(runner, expectedMessage);
     }
 }

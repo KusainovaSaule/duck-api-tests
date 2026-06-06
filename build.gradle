@@ -20,6 +20,10 @@ dependencies {
     implementation 'com.consol.citrus:citrus-validation-json:3.4.0'
     implementation 'org.slf4j:slf4j-reload4j:2.0.7'
     compileOnly 'org.projectlombok:lombok:1.18.28'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testCompileOnly 'org.projectlombok:lombok:1.18.30'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
 test {
